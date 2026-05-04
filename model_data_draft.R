@@ -1,0 +1,98 @@
+# bringing in model data
+
+#Att 1 w STJ
+#using parameters for a yearly cycle and temperature from the CESM 2 ssp585 
+# model
+
+library(tidyverse)
+
+annual_cycles <- read.csv('site_data_doy_avgs.csv', header = TRUE)
+annual_stj <- annual_cycles %>% dplyr::filter(site_char == 'US_STJ')
+
+# model temperatures
+model_temps_stj <- read_csv('STJ_cesm2_ssp585_df.csv')
+model_temps_stj$site <- '1'
+# match temp day of year with annual cycle day of year
+
+for (i in 1:length(annual_stj$DOY_disc)){
+  for(j in 1:length(model_temps_stj$doy))
+    if (annual_stj$DOY_disc[i] == model_temps_stj$doy[j]){
+      model_temps_stj$wtd[j] <- annual_stj$wtd[i]
+      model_temps_stj$par[j]<-annual_cycles$par[i]
+      model_temps_stj$lai[j]<-0
+      model_temps_stj$gi[j]<-annual_stj$evi[i]
+      model_temps_stj$fpar[j] <- annual_stj$fpar[i]
+      model_temps_stj$lue[j] <- annual_stj$lue[i]
+      model_temps_stj$wetland_age[j] <- 9999 #don't care about restoration here
+      model_temps_stj$salinity[j] <- annual_stj$salinity[i]
+      model_temps_stj$nitrate[j] <- annual_stj$nitrate[i]
+      model_temps_stj$som[j] <- 0 
+      model_temps_stj$site_2[j] <- 1
+    }
+}
+
+
+
+
+
+# reorder temps
+model_temps_stj$day_no <- 1:nrow(model_temps_stj)
+model_temps_stj <- model_temps_stj %>% relocate(day_no)
+model_temps_stj <- model_temps_stj %>% relocate(doy, .after = day_no)
+model_temps_stj <- model_temps_stj %>% relocate(yr, .after = doy)
+#model_temps_stj$som[1] <- 889.0917 # this might be a problem I think MEM is run offline
+model_temps_stj <- model_temps_stj %>% relocate(site, .after = site_2)
+
+for(i in 1:length(model_temps_stj$day_no)){
+  if(model_temps_stj$doy[i]==1){
+    model_temps_stj$som[i] = 889.0917
+  }
+}
+
+
+
+#try to run...
+
+# got it working but C supply initial has to be updated each year or
+# else it becomes depleted over time, which artificially depresses respiration
+# I think needs to have MEM couple for multiyear turnover
+
+
+source('PEPRMT_GPP_FINAL.R')
+
+GPP_theta <- c(0.7479271,   1.0497113, 149.4681710,  94.4532674 )
+GPP_mod <- PEPRMT_GPP_final(GPP_theta,
+                            data = model_temps_stj)
+# Not surew what this is messed up but the numbers look about right?
+
+model_temps_stj$GPP_mod <- GPP_mod$GPP
+model_temps_stj <- model_temps_stj %>% relocate(site, .after = GPP_mod)
+
+
+source('PEPRMT_Reco_FINAL.R')
+
+Reco_theta <- c(18.41329, 1487.65701,   11.65972,   61.29611 )
+Reco_mod <- PEPRMT_Reco_FINAL(Reco_theta,
+                              data = model_temps_stj,
+                              wetland_type=2)
+#naming is still weird
+
+#model_temps_stj$Reco_mod <- Reco_mod$Reco_full #just do new dataset w resutls
+model_temps_stj$S1<- Reco_mod$S1
+model_temps_stj$S2<- Reco_mod$S2
+model_temps_stj <- model_temps_stj %>% relocate(site, .after =S2)
+
+
+source('PEPRMT_CH4_FINAL.R')
+CH4_theta<- c( 14.9025078, 0.4644174, 16.7845002, 0.4359649, 15.8857612,
+               0.5120464, 486.4106939, 0.1020278 )
+CH4_mod <- PEPRMT_CH4_FINAL(CH4_theta,
+                            data = model_temps_stj,
+                            wetland_type=2)
+
+model_temps_stj$ch4_mod<-CH4_mod$pulse_emission_total
+
+model_mean_ch4<-model_temps_stj%>%group_by(yr)%>%
+  summarize(meanCH4 = mean(ch4_mod), na.rm = T)
+
+plot(model_mean_ch4$meanCH4~model_mean_ch4$yr)

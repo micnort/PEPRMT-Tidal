@@ -32,8 +32,9 @@
 # a data frame containing
 # 1.Reco_full: total amount of CO2 emitted by ecosystem respiration (including heterotrophic and autotrophic respiration).
 # 2.NEE_mod: Net ecosystem exchanged of CO2 (adding Reco with GPP predicted in GPP module)
-# 3.S1: amount of carbon stored in soil carbon pool 1, the labile pool
-# 4.S2: amount of carbon stored in soil carbon pool 2, the SOC pool
+# 3.S1: amount of carbon stored in soil carbon pool 1, the SOC pool
+# 4.S2: amount of carbon stored in soil carbon pool 2, the labile pool
+# MN switched labels
 
 #units of output
 # 1.Reco_full: g C CO2 m^-2 day^-1
@@ -79,28 +80,28 @@ PEPRMT_Reco_FINAL <- function(theta,
     d <- subset(data, site == i)
     
     #Exogenous Variables
-    Time_2 = d[,1] # day of year (1-infinite # of days)
-    DOY_disc_2=d[,2] #discontinuous day of year that starts over every year (1-365 or 366)
-    Year_2=d[,3] #year 
-    TA_2 = d[,4] #Air temperature (C)
-    WT_2 = d[,5] #water table depth (cm) equals 0 when water table at soil surface
-    PAR_2 <- d[,6] #photosynthetically active radiation (umol m-2 d-1)
-    LAI_2 <- d[,7] #Leaf area index (if not using can be 0s or NaN)
-    GI_2 <- d[,8] #greeness index from Phenocam (GCC) or Landsat EVI etc (unitless)
-    FPAR <- d[,9] #If using LAI data, set FPAR variable to 1's, if using a greenness index set FPAR to 0's
-    LUE<- d[,10] #growing season LUE computed for each site using measured GPP in gC per umol
-    wetland_age_2= d[,11] #Age of wetland in years
-    Sal <- d[,12] #Salinity (ppt)
-    NO3 <- d[,13] #Dissolved NO3 (mg/L)
+    Time_2 = unlist(d[,1]) # day of year (1-infinite # of days)
+    DOY_disc_2= unlist(d[,2]) #discontinuous day of year that starts over every year (1-365 or 366)
+    Year_2= unlist(d[,3]) #year 
+    TA_2 = unlist(d[,4]) #Air temperature (C)
+    WT_2 = unlist(d[,5]) #water table depth (cm) equals 0 when water table at soil surface
+    PAR_2 <- unlist(d[,6]) #photosynthetically active radiation (umol m-2 d-1)
+    LAI_2 <- unlist(d[,7]) #Leaf area index (if not using can be 0s or NaN)
+    GI_2 <- unlist(d[,8]) #greeness index from Phenocam (GCC) or Landsat EVI etc (unitless)
+    FPAR <- unlist(d[,9]) #If using LAI data, set FPAR variable to 1's, if using a greenness index set FPAR to 0's
+    LUE<- unlist(d[,10]) #growing season LUE computed for each site using measured GPP in gC per umol
+    wetland_age_2= unlist(d[,11]) #Age of wetland in years
+    Sal <- unlist(d[,12]) #Salinity (ppt)
+    NO3 <- unlist(d[,13]) #Dissolved NO3 (mg/L)
     #Season_drop_2 <- d[,13] #not used in PEPRMT-Tidal (was used in original PEPRMT model in peatlands) 
     #Season variable that is set to 1 in winter (DOY 1-88, 336-365), 2 pre-spring (DOY 89-175), 3 spring (DOY 176-205), 4 summer (DOY 206-265), 5 fall (DOY 266-335)
-    SOM_2 <-d[,14] #Decomposed Organic matter : all the decomposed soil organic matter in top meter of soil informed buy MEM inclusive of current year
-    site_2 <-d[,15] #Site: if running more than 1 site, have 1s in this column for first site, 2s for 2nd site and so on
-    GPP_2 = d[,16] #Modeled GPP - use output from PEPRMT-GPP (gC m-2 day-1) where negative fluxes = uptake
+    SOM_2 <-unlist(d[,14]) #Decomposed Organic matter : all the decomposed soil organic matter in top meter of soil informed buy MEM inclusive of current year
+    site_2 <-unlist(d[,15]) #Site: if running more than 1 site, have 1s in this column for first site, 2s for 2nd site and so on
+    GPP_2 = unlist(d[,16]) #Modeled GPP - use output from PEPRMT-GPP (gC m-2 day-1) where negative fluxes = uptake
     
     
     # #Static C allocation theme
-    NPPsum_avail_2 <- (c(GPP_2)*-1) #g C m-2 day-1 change to + numbers & give Reco access to GPP
+    NPPsum_avail_2 <- (GPP_2*-1) #g C m-2 day-1 change to + numbers & give Reco access to GPP
     
     #Time Invariant
     R <- 8.314 #J K-1 mol-1
@@ -131,7 +132,7 @@ PEPRMT_Reco_FINAL <- function(theta,
     C2in[t] <- NPPsum_avail_2[t]*0.5 # gC m-2 d-1
 
     C1_init[t] <- SOM_2[t]#"decomposed" Organic matter all the soil organic matter in top meter from MEM inclusive of current year
-    
+    #print(SOM_2[t])
     #if (t == 1 | site_change[t]>0 #if beginning of model or switch sites, start C1 pool over
     if (t == 1) {
       S1[t] <- C1_init[t] #substrate avail NOT affected by water avail-- SOM pool
@@ -142,7 +143,7 @@ PEPRMT_Reco_FINAL <- function(theta,
     }
     
     #Empirical factor for increased availability of SOC during the first 3 yrs following restoration
-    if (wetland_age_2[t]<1) {
+    if (wetland_age_2[t]<4) { #MN changed logic from <1 to < 4 to match note 4/2026
       percent_available[t] <- 0.6
     } else {
       percent_available[t] <- 1 #for peatlands was 20% now 100% is available 
@@ -226,7 +227,7 @@ PEPRMT_Reco_FINAL <- function(theta,
     as.data.frame(.)
   # store d in a vector  
   outcome_lst[[i]] <- (w) 
-
+print(S1)
   }
   
   # combine iterations of loop and return all results

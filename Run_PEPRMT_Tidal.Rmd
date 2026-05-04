@@ -28,11 +28,11 @@ library(gridExtra)
 #load in data
 #All data were sourced from the Ameriflux database or directly from site PIs, details about the data and acquisition are in Oikawa et al. 2023
 #Note: site column needs to be numeric, there is also a char site name column to help keep track
-All_sites_master <- read.csv("data_sets/All_sites_master.csv", header=TRUE) %>% 
+All_sites_master <- read.csv("All_sites_master.csv", header=TRUE) %>% 
  dplyr::select(1:24) 
 summary(All_sites_master)
 str(All_sites_master)
-
+typeof(All_sites_master)
 ```
 
 
@@ -40,7 +40,7 @@ str(All_sites_master)
 ```{r}
 #First run GPP Module
 
-source('./PEPRMT_Scripts/PEPRMT_GPP_FINAL.R')
+source('PEPRMT_GPP_FINAL.R')
 
 GPP_theta <- c(0.7479271,   1.0497113, 149.4681710,  94.4532674 )
     GPP_mod <- PEPRMT_GPP_final(GPP_theta,
@@ -129,7 +129,7 @@ grid.arrange(US_EDN, US_SRR, US_STJ, US_LA1, US_PLM, ncol=1, nrow =5)
 #Add modeled GPP into data before running Reco module (16th column)
 All_sites_master[,16]<-GPP_mod$GPP
 
-source('./PEPRMT_Scripts/PEPRMT_Reco_FINAL.R')
+source('PEPRMT_Reco_FINAL.R')
 
 Reco_theta <- c(18.41329, 1487.65701,   11.65972,   61.29611 )
     Reco_mod <- PEPRMT_Reco_FINAL(Reco_theta,
@@ -216,7 +216,7 @@ grid.arrange(US_EDN_Reco, US_SRR_Reco, US_STJ_Reco, US_LA1_Reco, US_PLM_Reco, nc
 All_sites_master[,17]<-Reco_mod$S1
 All_sites_master[,18]<-Reco_mod$S2
 
-source('./PEPRMT_Scripts/PEPRMT_CH4_FINAL.R')
+source('PEPRMT_CH4_FINAL.R')
 
 CH4_theta<- c( 14.9025078, 0.4644174, 16.7845002, 0.4359649, 15.8857612,0.5120464, 486.4106939, 0.1020278 )
     CH4_mod <- PEPRMT_CH4_FINAL(CH4_theta,
